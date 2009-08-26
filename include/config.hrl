@@ -1,0 +1,1 @@
+-record (config, {host, port, username, password, from, to, header_to}).
