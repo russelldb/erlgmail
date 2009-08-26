@@ -1,0 +1,15 @@
+Erlgmail is a knocked together OTP app that simplyfies sending email through googlemail. It is just a wrapper on the work by Benjamin Nortier in this (http://21ccw.blogspot.com/2009/05/how-to-send-email-via-gmail-using.html) blog post.
+
+To use:
+
+git clone
+cd erlgmail
+make
+cd priv
+vi erlgmail.cfg 
+add your own google account information (and add default too list (useful for form mailer type stuff))
+cd ebin (or put it in $ERL_LIBS)
+erl -boot start_sasl -config $ERL_LIBS/erlgmail/sasl.config (or your own config)
+1> ssl:start().
+2> application:start(erlgmail).
+3> erlgmail:send("Subject", "Message Body", ["to@who.com"], ["Mister To Who"]).
