@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : new_smtp.erl
 %%% Author  : Russell Brown <>
-%%% Description :  A google mail sender
+%%% Description :  A google mail sender (cribbed from Benjamin Nortier's 21st C code works blog post http://21ccw.blogspot.com/2009/05/how-to-send-email-via-gmail-using.html)
 %%%
 %%% Created : 14 Jul 2009 by Russell Brown <>
 %%%-------------------------------------------------------------------
