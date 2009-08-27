@@ -10,7 +10,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, send/2, send/3, send/4]).
+-export([start_link/0, send/2, send/3, send/4, send/5]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -28,29 +28,49 @@
 %% Description: Starts the server
 %%--------------------------------------------------------------------
 start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [{filename, filename:join(code:priv_dir(?MODULE), "erlgmail.cfg")}], []).
+    gen_server:start_link({local, ?SERVER}, ?MODULE, application:get_all_env(), []).
 
 
 %%--------------------------------------------------------------------
 %% Function: send  
-%% Description: sends the  mail to recepients configured
+%% Description: sends the  mail to recepients configured in the default profile
 %%--------------------------------------------------------------------
 send(Subject, Body) ->
-    gen_server:cast(?SERVER, {mail, {email, {subject, Subject}, {body, Body}, {to, []}, {header_to, []}}, 0}).
+    send(Subject, Body, default).
 
 %%--------------------------------------------------------------------
 %% Function: send  
-%% Description: sends the  mail to recepients listed in To (a List)
+%% Description: sends the  mail using Profile
+%%--------------------------------------------------------------------
+send(Subject, Body, Profile) when is_atom(Profile) ->
+    send(Subject, Body, [], [], Profile);
+%%--------------------------------------------------------------------
+%% Function: send  
+%% Description: sends the  mail to recipients in To (a List) using the default profile
 %%--------------------------------------------------------------------
 send(Subject, Body, To) ->
-	gen_server:cast(?SERVER, {mail, {email, {subject, Subject}, {body, Body}, {to, To}, {header_to, []}}, 0}).
+    send(Subject, Body, To, [], default).
 
 %%--------------------------------------------------------------------
 %% Function: send  
-%% Description: sends the  mail to recepients listed in To (a List) with the header_to addresses in HeaderTo (a List)
+%% Description: sends the  mail to recipients in To using Profile
 %%--------------------------------------------------------------------
-send(Subject, Body,To, HeaderTo) ->
-	gen_server:cast(?SERVER, {mail, {email, {subject, Subject}, {body, Body}, {to, To}, {header_to, HeaderTo}}, 0}).
+send(Subject, Body, To, Profile) when is_atom(Profile) ->
+    send(Subject, Body, To, [], Profile);
+%%--------------------------------------------------------------------
+%% Function: send  
+%% Description: sends the  mail to recipients in To with the display names in HeaderTo using the default profile
+%%--------------------------------------------------------------------
+send(Subject, Body, To, HeaderTo) ->
+    send(Subject, Body, To, HeaderTo, default).
+
+%%--------------------------------------------------------------------
+%% Function: send  
+%% Description: sends the  mail to recipients in To using with display names in HeaderTo using Profile
+%%--------------------------------------------------------------------
+send(Subject, Body, To, HeaderTo, Profile) ->
+    gen_server:cast(?SERVER, {mail, {email, {subject, Subject}, {body, Body}, {to, To}, {header_to, HeaderTo}, {profile, Profile}}, 0}).
+
 
 %%====================================================================
 %% gen_server callbacks
@@ -64,10 +84,21 @@ send(Subject, Body,To, HeaderTo) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init(L) ->
-    Filename = proplists:get_value(filename, L),
-    Config = config_reader:get_config(Filename),
-    Socket = new_smtp:connect({config, Config#config.host, Config#config.port, Config#config.username, Config#config.password}),
-    {ok, {Socket, Config}}.
+    Filename = proplists:get_value(config_file, L),
+    IsAbsolute = proplists:get_value(absolute, L),
+    ConfigFile = case IsAbsolute of
+		     false ->
+			 filename:join(code:priv_dir(?MODULE), Filename);
+		     _ ->
+			 Filename
+		 end,
+    %% Get the dictionary of configname -> config records
+    Config = config_reader:get_config2(ConfigFile),
+
+    %% Create a connection socket for each config item and store them in a dictionary configname -> Socket
+    Sockets = dict:map(fun(_Key, Value) -> new_smtp:connect({config, Value#config.host, Value#config.port, Value#config.username, Value#config.password}) end, Config),
+    %%Put both same name keyed dictionaries into a tuple
+    {ok, {Sockets, Config}}.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -88,7 +119,10 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({mail, {email, {subject, Subject}, {body, Body}, {to, To}, {header_to, HeaderTo}}=Message, Times}, {Socket, Config}=State) ->
+handle_cast({mail, {email, {subject, Subject}, {body, Body}, {to, To}, {header_to, HeaderTo}, {profile, Profile}}=Message, Times}, {Sockets, Configs}) ->
+    %% Pull the correct socket from the state and use it
+    Socket = dict:fetch(Profile, Sockets),
+    Config = dict:fetch(Profile, Configs),
     S = try ssl:connection_info(Socket) of
 	    {ok, _} ->  
 		Socket;
@@ -98,23 +132,23 @@ handle_cast({mail, {email, {subject, Subject}, {body, Body}, {to, To}, {header_t
 	    _:_ ->
 		new_smtp:connect({config, Config#config.host, Config#config.port, Config#config.username, Config#config.password})
 	end,
-	%%Set the who to
-	Recipient = case To of
-		[] -> Config#config.to;
-		_ -> To
-	end,
-	%%And the who to to show
-	HeaderRecipient = case HeaderTo of
-		[] -> Config#config.header_to;
-		_ -> HeaderTo
-	end,
-	
+    %%Set the who to
+    Recipient = case To of
+		    [] -> Config#config.to;
+		    _ -> To
+		end,
+    %%And the who to to show
+    HeaderRecipient = case HeaderTo of
+			  [] -> Config#config.header_to;
+			  _ -> HeaderTo
+		      end,
+
     try	new_smtp:send(S,  {message, Recipient, HeaderRecipient, Config#config.from, Subject, Body}) of
 	S ->
-	    {noreply, {S, Config}}
+	    {noreply, {dict:store(Profile, S, Sockets), Configs}}
     catch
 	exit:_ ->
-	    handle_cast({mail, Message, Times+1}, State)
+	    handle_cast({mail, Message, Times+1},  {dict:store(Profile, S, Sockets), Configs})
     end;
 handle_cast({mail, Message, 3}, State) ->
     %%Log it, move on
@@ -139,8 +173,8 @@ handle_info(_Info, State) ->
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
 %%--------------------------------------------------------------------
-terminate(_Reason, {Socket,_}) ->
-    new_smtp:disconnect(Socket).
+terminate(_Reason, {Sockets,_}) ->
+    dict:map(fun(_K, V) -> new_smtp:disconnect(V) end, Sockets).
 
 %%--------------------------------------------------------------------
 %% Func: code_change(OldVsn, State, Extra) -> {ok, NewState}
