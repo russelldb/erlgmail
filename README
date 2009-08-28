@@ -2,6 +2,15 @@ Erlgmail is a knocked together OTP app that simplyfies sending email through goo
 
 To use:
 
+The cfg file now allows "profiles". Also the app now follows OTP env config standards better. If you wish to start an erlgmail OTP application instance with a different config file simply start like:
+
+erl -erlgmail config_file '"/absolute/location/of/config/file.cfg"'
+
+Or edit the example erlgmail.cfg in the priv directory. 
+
+There MUST be a profile named "default" or things won't work. The send API now accepts an optional "profile" parameter.
+If no "profile" (an atom) is specified then "default" is assumed.
+
 git clone
 cd erlgmail
 make
@@ -10,6 +19,8 @@ vi erlgmail.cfg
 add your own google account information (and add default too list (useful for form mailer type stuff))
 cd ebin (or put it in $ERL_LIBS)
 erl -boot start_sasl -config $ERL_LIBS/erlgmail/sasl.config (or your own config)
+or erl -boot start_sasl -config /path/to/SASL_CONF -erlgmail '"/abs/path/to/conf.cfg"'
 1> ssl:start().
 2> application:start(erlgmail).
 3> erlgmail:send("Subject", "Message Body", ["to@who.com"], ["Mister To Who"]).
+4> erlgmail:send("Subject", "Message", myprofile_x).
