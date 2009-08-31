@@ -1,16 +1,18 @@
 %%%-------------------------------------------------------------------
 %%% File    : erlgmail.erl
-%%% Author  : Russell Brown
-%%% Description : Q n D email sender using gmail (cribbed from Benjamin Nortier's 21st C code works blog post http://21ccw.blogspot.com/2009/05/how-to-send-email-via-gmail-using.html)
+%%% @author  Russell Brown <russell@ossme.net>
+%%% @doc  Q n D gen_server email sender using gmail. See the send/n functions below. See the configuration section of the overview for profiles and configuration information.
+%%% @reference <a href="http://21ccw.blogspot.com/2009/05/how-to-send-email-via-gmail-using.html">Benjamin Nortier's 21st C code works blog post </a>
+%%% @version 1
+%%% @end
 %%%
-%%% Created :  can't 'mber
 %%%-------------------------------------------------------------------
 -module(erlgmail).
 
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, send/2, send/3, send/4, send/5]).
+-export([start_link/0, send/2, send/3, psend/3, send/4, psend/4, psend/5]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -31,32 +33,41 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, application:get_all_env(), []).
 
 
-%%--------------------------------------------------------------------
-%% Function: send  
-%% Description: sends the  mail to recepients configured in the default profile
+%%--------------------------------------------------------------------  
+%% @doc Sends an email with subject Subject and message body Body to the recepients configured in the default profile. Uses the default profile.
+%% @spec send(Subject::string(), Body::string()) -> ok
+%% @equiv erlgmail:send("Subject", "Body", default)
+%% @end
 %%--------------------------------------------------------------------
 send(Subject, Body) ->
     send(Subject, Body, default).
 
 %%--------------------------------------------------------------------
-%% Function: send  
-%% Description: sends the  mail using Profile
+%% @doc Sends an email with subject Subject and message body Body to the recepients configured in (and using) Profile profile
+%% @spec psend(Subject::string(), Body::string(), Profile::profile()) -> ok
+%% @type profile() = atom(). The name of a profile registered with the gen_server through the config file
+%% @end
 %%--------------------------------------------------------------------
-send(Subject, Body, Profile) when is_atom(Profile) ->
-    send(Subject, Body, [], [], Profile);
+psend(Subject, Body, Profile) when is_atom(Profile) ->
+    send(Subject, Body, [], [], Profile).
+
 %%--------------------------------------------------------------------
-%% Function: send  
-%% Description: sends the  mail to recipients in To (a List) using the default profile
+%% @doc Sends an email with subject Subject and message body Body to the email address To
+%% @spec send(Subject::string(), Body::string(), To::email()) -> ok
+%% @type email() = string(). An email address (there is no parameter validation)
+%% @end
 %%--------------------------------------------------------------------
-send(Subject, Body, To) ->
+send(Subject, Body, To) when is_list(To) ->
     send(Subject, Body, To, [], default).
 
 %%--------------------------------------------------------------------
-%% Function: send  
-%% Description: sends the  mail to recipients in To using Profile
+%% @doc Sends an email with subject Subject and message body Body to recipient To using Profile profile
+%% @spec psend(Subject::string(), Body::string(), To::email(), Profile::profile()) -> ok
+%% @end
 %%--------------------------------------------------------------------
-send(Subject, Body, To, Profile) when is_atom(Profile) ->
-    send(Subject, Body, To, [], Profile);
+psend(Subject, Body, To, Profile) when is_atom(Profile) ->
+    send(Subject, Body, To, [], Profile).
+
 %%--------------------------------------------------------------------
 %% Function: send  
 %% Description: sends the  mail to recipients in To with the display names in HeaderTo using the default profile
@@ -68,7 +79,7 @@ send(Subject, Body, To, HeaderTo) ->
 %% Function: send  
 %% Description: sends the  mail to recipients in To using with display names in HeaderTo using Profile
 %%--------------------------------------------------------------------
-send(Subject, Body, To, HeaderTo, Profile) ->
+psend(Subject, Body, To, HeaderTo, Profile) ->
     gen_server:cast(?SERVER, {mail, {email, {subject, Subject}, {body, Body}, {to, To}, {header_to, HeaderTo}, {profile, Profile}}, 0}).
 
 
@@ -172,6 +183,15 @@ handle_info(_Info, State) ->
 %% terminate. It should be the opposite of Module:init/1 and do any necessary
 %% cleaning up. When it returns, the gen_server terminates with Reason.
 %% The return value is ignored.
+%% @spec terminate(Reason::term(), State::state()) -> ok
+%% @doc Politely says bye to gmail for each Socket and closes it
+%% @type state() = {sockets(), configs()}
+%% @type sockets() = dict(profile(), socket()). A dictionary using profile() as key and a socket() as value
+%% @type configs() = dict(profile(), config()). A dictionary using profile() as key and a config() as value
+%% @type config() = {config, {host, port, username, password, from, to, header_to}}. The config record defined in config.hrl
+%% @type socket() = term(). http socket
+%% @type dict(). An Erlang dictionary (see dict)
+%% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, {Sockets,_}) ->
     dict:map(fun(_K, V) -> new_smtp:disconnect(V) end, Sockets).

@@ -1,0 +1,142 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<title>Module erlgmail</title>
+<link rel="stylesheet" type="text/css" href="stylesheet.css" title="EDoc">
+</head>
+<body bgcolor="white">
+<div class="navbar"><a name="#navbar_top"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<hr>
+
+<h1>Module erlgmail</h1>
+<ul class="index"><li><a href="#description">Description</a></li><li><a href="#types">Data Types</a></li><li><a href="#index">Function Index</a></li><li><a href="#functions">Function Details</a></li></ul> Q n D gen_server email sender using gmail.
+
+<p><b>Version:</b> 1</p>
+<p><b>Behaviours:</b> <a href="gen_server.html"><tt>gen_server</tt></a>.</p>
+<p><b>Authors:</b> Russell Brown (<a href="mailto:russell@ossme.net"><tt>russell@ossme.net</tt></a>).</p>
+<p><b>References</b><ul><li><a href="http://21ccw.blogspot.com/2009/05/how-to-send-email-via-gmail-using.html">Benjamin Nortier's 21st C code works blog post </a></li></ul></p>
+
+<h2><a name="description">Description</a></h2> Q n D gen_server email sender using gmail. See the send/n functions below. See the configuration section of the overview for profiles and configuration information.
+<h2><a name="types">Data Types</a></h2>
+
+<h3 class="typedecl"><a name="type-config">config()</a></h3>
+<p><tt>config() = {config, {host, port, username, password, from, to, header_to}}</tt></p>
+<p>The config record defined in config.hrl</p>
+
+<h3 class="typedecl"><a name="type-configs">configs()</a></h3>
+<p><tt>configs() = <a href="#type-dict">dict(<a href="#type-profile">profile()</a>, <a href="#type-config">config()</a>)</a></tt></p>
+<p>A dictionary using profile() as key and a config() as value</p>
+
+<h3 class="typedecl"><a name="type-dict">dict()</a></h3>
+<p><b>abstract datatype</b>: <tt>dict()</tt></p>
+<p>An Erlang dictionary (see dict)</p>
+
+<h3 class="typedecl"><a name="type-email">email()</a></h3>
+<p><tt>email() = string()</tt></p>
+<p>An email address (there is no parameter validation)</p>
+
+<h3 class="typedecl"><a name="type-profile">profile()</a></h3>
+<p><tt>profile() = atom()</tt></p>
+<p>The name of a profile registered with the gen_server through the config file</p>
+
+<h3 class="typedecl"><a name="type-socket">socket()</a></h3>
+<p><tt>socket() = term()</tt></p>
+<p>http socket</p>
+
+<h3 class="typedecl"><a name="type-sockets">sockets()</a></h3>
+<p><tt>sockets() = <a href="#type-dict">dict(<a href="#type-profile">profile()</a>, <a href="#type-socket">socket()</a>)</a></tt></p>
+<p>A dictionary using profile() as key and a socket() as value</p>
+
+<h3 class="typedecl"><a name="type-state">state()</a></h3>
+<p><tt>state() = {<a href="#type-sockets">sockets()</a>, <a href="#type-configs">configs()</a>}</tt></p>
+
+
+<h2><a name="index">Function Index</a></h2>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#code_change-3">code_change/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#handle_call-3">handle_call/3</a></td><td></td></tr>
+<tr><td valign="top"><a href="#handle_cast-2">handle_cast/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#handle_info-2">handle_info/2</a></td><td></td></tr>
+<tr><td valign="top"><a href="#init-1">init/1</a></td><td></td></tr>
+<tr><td valign="top"><a href="#psend-3">psend/3</a></td><td>Sends an email with subject Subject and message body Body to the recepients configured in (and using) Profile profile.</td></tr>
+<tr><td valign="top"><a href="#psend-4">psend/4</a></td><td>Sends an email with subject Subject and message body Body to recipient To using Profile profile.</td></tr>
+<tr><td valign="top"><a href="#psend-5">psend/5</a></td><td></td></tr>
+<tr><td valign="top"><a href="#send-2">send/2</a></td><td>Sends an email with subject Subject and message body Body to the recepients configured in the default profile.</td></tr>
+<tr><td valign="top"><a href="#send-3">send/3</a></td><td>Sends an email with subject Subject and message body Body to the email address To.</td></tr>
+<tr><td valign="top"><a href="#send-4">send/4</a></td><td></td></tr>
+<tr><td valign="top"><a href="#start_link-0">start_link/0</a></td><td></td></tr>
+<tr><td valign="top"><a href="#terminate-2">terminate/2</a></td><td>Politely says bye to gmail for each Socket and closes it.</td></tr>
+</table>
+
+<h2><a name="functions">Function Details</a></h2>
+
+<h3 class="function"><a name="code_change-3">code_change/3</a></h3>
+<div class="spec">
+<p><tt>code_change(OldVsn, State, Extra) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="handle_call-3">handle_call/3</a></h3>
+<div class="spec">
+<p><tt>handle_call(Request, From, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="handle_cast-2">handle_cast/2</a></h3>
+<div class="spec">
+<p><tt>handle_cast(Msg, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="handle_info-2">handle_info/2</a></h3>
+<div class="spec">
+<p><tt>handle_info(Info, State) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="init-1">init/1</a></h3>
+<div class="spec">
+<p><tt>init(L) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="psend-3">psend/3</a></h3>
+<div class="spec">
+<p><tt>psend(Subject::string(), Body::string(), Profile::<a href="#type-profile">profile()</a>) -&gt; ok</tt></p>
+</div><p>Sends an email with subject Subject and message body Body to the recepients configured in (and using) Profile profile</p>
+
+<h3 class="function"><a name="psend-4">psend/4</a></h3>
+<div class="spec">
+<p><tt>psend(Subject::string(), Body::string(), To::<a href="#type-email">email()</a>, Profile::<a href="#type-profile">profile()</a>) -&gt; ok</tt></p>
+</div><p>Sends an email with subject Subject and message body Body to recipient To using Profile profile</p>
+
+<h3 class="function"><a name="psend-5">psend/5</a></h3>
+<div class="spec">
+<p><tt>psend(Subject, Body, To, HeaderTo, Profile) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="send-2">send/2</a></h3>
+<div class="spec">
+<p><tt>send(Subject::string(), Body::string()) -&gt; ok</tt></p>
+</div><p>Equivalent to <a href="erlgmail.html#send-3"><tt>erlgmail:send("Subject", "Body", default)</tt></a>.</p>
+<p>Sends an email with subject Subject and message body Body to the recepients configured in the default profile. Uses the default profile.</p>
+
+<h3 class="function"><a name="send-3">send/3</a></h3>
+<div class="spec">
+<p><tt>send(Subject::string(), Body::string(), To::<a href="#type-email">email()</a>) -&gt; ok</tt></p>
+</div><p>Sends an email with subject Subject and message body Body to the email address To</p>
+
+<h3 class="function"><a name="send-4">send/4</a></h3>
+<div class="spec">
+<p><tt>send(Subject, Body, To, HeaderTo) -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="start_link-0">start_link/0</a></h3>
+<div class="spec">
+<p><tt>start_link() -&gt; any()</tt></p>
+</div>
+
+<h3 class="function"><a name="terminate-2">terminate/2</a></h3>
+<div class="spec">
+<p><tt>terminate(Reason::term(), State::<a href="#type-state">state()</a>) -&gt; ok</tt></p>
+</div><p>Politely says bye to gmail for each Socket and closes it</p>
+<hr>
+
+<div class="navbar"><a name="#navbar_bottom"></a><table width="100%" border="0" cellspacing="0" cellpadding="2" summary="navigation bar"><tr><td><a href="overview-summary.html" target="overviewFrame">Overview</a></td><td><a href="http://www.erlang.org/"><img src="erlang.png" align="right" border="0" alt="erlang logo"></a></td></tr></table></div>
+<p><i>Generated by EDoc, Aug 31 2009, 14:27:12.</i></p>
+</body>
+</html>

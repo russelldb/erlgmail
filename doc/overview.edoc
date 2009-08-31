@@ -1,0 +1,55 @@
+** this is the overview.doc file for the application 'frob' **
+
+@author Russell Brown <russell@ossme.net>
+@version 1
+@title Welcome to Erlgmail
+@doc <p>Erlgmail is based on a <a href="http://21ccw.blogspot.com/2009/05/how-to-send-email-via-gmail-using.html" target="_new">blog post</a> from Benjamin Nortier. It is my first OTP application.</p>
+<p><h2>Contents</h2>
+<ul>
+<li><a href="#quikstart">Quickstart</a></li>
+<li><a href="#config">Configuration</a></li>
+<li><a href="#usage">Usage</a></li>
+</ul>
+</p>
+<p><h2><a name="quickstart">Quickstart</a></h2>
+Edit the file erlgmail.cfg in erlgmail/priv. More details <a href="#config">here</a>. 
+<pre>
+{default, [{host, "smtp.gmail.com"},
+	{port, 465},
+	{username, "usera@gmail.com"},
+	{password, "user_a_pass"},
+	{from, "usr_a@gmail.com"},
+	{to, []},
+	{header_to, []}]
+}.
+</pre>
+1> ssl:start(). <br/>
+2> application:start(erlgmail). <br/>
+3> erlgmail:send("Test mail subject", "Test Mail Body", ["test@recpient1.com"], ["Mr Test Recipient"]). <br/>
+</p>
+<p><h2><a name="config">Configuration</a></h2>
+Erlgmail is configured using "profiles". Have a look at include/config.hrl and erlgmail.cfg.
+<pre>-record (config, {host, port, username, password, from, to, header_to}).</pre> The config file contains at least one two-tuple. The first element of the tuple is a <b>profile</b> name, the second a proplist that is based on the config.hrl record. You can add as many profile tuples as you need or want but it is best to have at least the one named default to save pasing the Profile param to every send method. The elements of the config.hrl/proplist are pretty much self explanatory. The lists <b>to</b> and <b>header_to</b> are defualts for things like form mailers. They simplyfy sending email to the same recipients (such as in a contact form on a website).</p>
+<p>
+Since the location of the configuration file is set in the erlgmail.app file as an <b>env</b> parameter named <b>config_file</b> you can specify a totally different config file. Just start the erlang shell with
+<pre>
+erl -erlgmail config_file '"/absolute/path/to/file.cfg"'
+</pre>
+or put your file in the <b>priv</b> directory and specify
+<pre>
+erl -erlgmail config_file '"alternative.cfg"' absolute 'false'
+</pre>
+This enables you to start many instances of the application each with unique configuration rather than having many profiles in one application (useful for hosting multiple yaws or nitrogen websites).
+</p>
+<p><h2><a name="usage">Usage</a></h2>
+Erlgmail depends on the ssl application being started. Once you have started erlgmail you just need to call one of the <b>send</b> methods to send an email from the configured googlemail account.
+<pre>
+send/2 -> send("Subject", "Message Body").
+psend/3 -> send("Subject", "Message Body", Profile).
+send/3 -> send("Subject", "Body", ["recpt@one.com", "recpt@two.com", "recpt@three.com"]).
+psend/4 -> send("Subject", "Body", ["recpt@one.com", "recpt@two.com", "recpt@three.com"], Profile).
+send/4 -> send("Subject", "Body", ["recpt@one.com", "recpt@two.com", "recpt@three.com"], ["Mr One", "Mrs. Two", "Ms Three"]).
+psend/5 -> send("Subject", "Body", ["recpt@one.com", "recpt@two.com", "recpt@three.com"], ["Mr One", "Mrs. Two", "Ms Three"], Profile).
+</pre>
+For each send/n function there is a psend/n+1 that takes an extra Profile parameter. The Profile is an atom, the name if a configured profile.
+</p>

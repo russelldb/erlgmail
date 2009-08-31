@@ -1,0 +1,3 @@
+{application,erlgmail}.
+{packages,[]}.
+{modules,[config_reader,erlgmail,erlgmail_app,erlgmail_sup,new_smtp]}.
