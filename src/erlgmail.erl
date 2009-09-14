@@ -40,7 +40,7 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 send(Subject, Body) ->
-    send(Subject, Body, default).
+    psend(Subject, Body, default).
 
 %%--------------------------------------------------------------------
 %% @doc Sends an email with subject Subject and message body Body to the recepients configured in (and using) Profile profile
@@ -49,7 +49,7 @@ send(Subject, Body) ->
 %% @end
 %%--------------------------------------------------------------------
 psend(Subject, Body, Profile) when is_atom(Profile) ->
-    send(Subject, Body, [], [], Profile).
+    psend(Subject, Body, [], [], Profile).
 
 %%--------------------------------------------------------------------
 %% @doc Sends an email with subject Subject and message body Body to the email address To
@@ -58,7 +58,7 @@ psend(Subject, Body, Profile) when is_atom(Profile) ->
 %% @end
 %%--------------------------------------------------------------------
 send(Subject, Body, To) when is_list(To) ->
-    send(Subject, Body, To, [], default).
+    psend(Subject, Body, To, [], default).
 
 %%--------------------------------------------------------------------
 %% @doc Sends an email with subject Subject and message body Body to recipient To using Profile profile
@@ -66,14 +66,14 @@ send(Subject, Body, To) when is_list(To) ->
 %% @end
 %%--------------------------------------------------------------------
 psend(Subject, Body, To, Profile) when is_atom(Profile) ->
-    send(Subject, Body, To, [], Profile).
+    psend(Subject, Body, To, [], Profile).
 
 %%--------------------------------------------------------------------
 %% Function: send  
 %% Description: sends the  mail to recipients in To with the display names in HeaderTo using the default profile
 %%--------------------------------------------------------------------
 send(Subject, Body, To, HeaderTo) ->
-    send(Subject, Body, To, HeaderTo, default).
+    psend(Subject, Body, To, HeaderTo, default).
 
 %%--------------------------------------------------------------------
 %% Function: send  
