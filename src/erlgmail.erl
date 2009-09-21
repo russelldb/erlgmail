@@ -130,41 +130,33 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
+handle_cast({mail, Message, Times}, State) when Times > 3 ->
+    %%Log it, move on
+    error_logger:error_msg("Failed to send message ~p~n", [Message]),
+    {noreply, State};
 handle_cast({mail, {email, {subject, Subject}, {body, Body}, {to, To}, {header_to, HeaderTo}, {profile, Profile}}=Message, Times}, {Sockets, Configs}) ->
     %% Pull the correct socket from the state and use it
     Socket = dict:fetch(Profile, Sockets),
     Config = dict:fetch(Profile, Configs),
-    S = try ssl:connection_info(Socket) of
-	    {ok, _} ->  
-		Socket;
-	    {error, _} ->
-		new_smtp:connect({config, Config#config.host, Config#config.port, Config#config.username, Config#config.password})
-	catch
-	    _:_ ->
-		new_smtp:connect({config, Config#config.host, Config#config.port, Config#config.username, Config#config.password})
-	end,
     %%Set the who to
     Recipient = case To of
-		    [] -> Config#config.to;
-		    _ -> To
-		end,
+                    [] -> Config#config.to;
+                    _ -> To
+                end,
     %%And the who to to show
     HeaderRecipient = case HeaderTo of
-			  [] -> Config#config.header_to;
-			  _ -> HeaderTo
-		      end,
+                          [] -> Config#config.header_to;
+                          _ -> HeaderTo
+                      end,
 
-    try	new_smtp:send(S,  {message, Recipient, HeaderRecipient, Config#config.from, Subject, Body}) of
-	S ->
-	    {noreply, {dict:store(Profile, S, Sockets), Configs}}
+    try new_smtp:send(Socket,  {message, Recipient, HeaderRecipient, Config#config.from, Subject, Body}) of
+        Socket ->
+            {noreply, {Sockets, Configs}}
     catch
-	exit:_ ->
-	    handle_cast({mail, Message, Times+1},  {dict:store(Profile, S, Sockets), Configs})
+        exit:_ ->
+            S = new_smtp:connect({config, Config#config.host, Config#config.port, Config#config.username, Config#config.password}),
+            handle_cast({mail, Message, Times+1},  {dict:store(Profile, S, Sockets), Configs})
     end;
-handle_cast({mail, Message, 3}, State) ->
-    %%Log it, move on
-    error_logger:error_msg("Failed to send message ~p~n", [Message]),
-    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
