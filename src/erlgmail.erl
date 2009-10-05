@@ -13,6 +13,7 @@
 
 %% API
 -export([start_link/0, send/2, send/3, psend/3, send/4, psend/4, psend/5]).
+-export([send_html/2, send_html/3, psend_html/3, send_html/4, psend_html/4, psend_html/5]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -42,6 +43,9 @@ start_link() ->
 send(Subject, Body) ->
     psend(Subject, Body, default).
 
+send_html(Subject, Body) ->
+    psend_html(Subject, Body, default).
+
 %%--------------------------------------------------------------------
 %% @doc Sends an email with subject Subject and message body Body to the recepients configured in (and using) Profile profile
 %% @spec psend(Subject::string(), Body::string(), Profile::profile()) -> ok
@@ -50,6 +54,9 @@ send(Subject, Body) ->
 %%--------------------------------------------------------------------
 psend(Subject, Body, Profile) when is_atom(Profile) ->
     psend(Subject, Body, [], [], Profile).
+
+psend_html(Subject, Body, Profile) when is_atom(Profile) ->
+	psend_html(Subject, Body, [], [], Profile).
 
 %%--------------------------------------------------------------------
 %% @doc Sends an email with subject Subject and message body Body to the email address To
@@ -60,6 +67,9 @@ psend(Subject, Body, Profile) when is_atom(Profile) ->
 send(Subject, Body, To) when is_list(To) ->
     psend(Subject, Body, To, [], default).
 
+send_html(Subject, Body, To) when is_list(To) ->
+	psend_html(Subject, Body, To, [], default).
+
 %%--------------------------------------------------------------------
 %% @doc Sends an email with subject Subject and message body Body to recipient To using Profile profile
 %% @spec psend(Subject::string(), Body::string(), To::email(), Profile::profile()) -> ok
@@ -68,6 +78,9 @@ send(Subject, Body, To) when is_list(To) ->
 psend(Subject, Body, To, Profile) when is_atom(Profile) ->
     psend(Subject, Body, To, [], Profile).
 
+psend_html(Subject, Body, To, Profile) when is_atom(Profile) ->
+    psend_html(Subject, Body, To, [], Profile).
+
 %%--------------------------------------------------------------------
 %% Function: send  
 %% Description: sends the  mail to recipients in To with the display names in HeaderTo using the default profile
@@ -75,12 +88,22 @@ psend(Subject, Body, To, Profile) when is_atom(Profile) ->
 send(Subject, Body, To, HeaderTo) ->
     psend(Subject, Body, To, HeaderTo, default).
 
+send_html(Subject, Body, To, HeaderTo) ->
+	psend(Subject, Body, To, HeaderTo, default).
+
 %%--------------------------------------------------------------------
 %% Function: send  
 %% Description: sends the  mail to recipients in To using with display names in HeaderTo using Profile
 %%--------------------------------------------------------------------
 psend(Subject, Body, To, HeaderTo, Profile) ->
-    gen_server:cast(?SERVER, {mail, {email, {subject, Subject}, {body, Body}, {to, To}, {header_to, HeaderTo}, {profile, Profile}}, 0}).
+	psend(undefined, Subject, Body, To, HeaderTo, Profile).
+
+psend_html(Subject, Body, To, HeaderTo, Profile) ->
+	psend("text/html", Subject, Body, To, HeaderTo, Profile).
+
+psend(ContentType, Subject, Body, To, HeaderTo, Profile) ->
+	Email = #email{content_type=ContentType, subject=Subject, body=Body, to=To, header_to=HeaderTo},
+    gen_server:cast(?SERVER, {Profile, Email, 3}).
 
 
 %%====================================================================
@@ -134,33 +157,35 @@ handle_call(_Request, _From, State) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling cast messages
 %%--------------------------------------------------------------------
-handle_cast({mail, Message, Times}, State) when Times > 3 ->
-    %%Log it, move on
-    error_logger:error_msg("Failed to send message ~p~n", [Message]),
-    {noreply, State};
-handle_cast({mail, {email, {subject, Subject}, {body, Body}, {to, To}, {header_to, HeaderTo}, {profile, Profile}}=Message, Times}, {Sockets, Configs}) ->
+handle_cast({Profile, Message0, Times}, {Sockets, Configs}=State) ->
+    Config = dict:fetch(Profile, Configs),	
+    %%Set the who to
+    Message1 =
+	case Message0#email.to of
+	    [] -> Message0#email{to = Config#config.to};
+	    _ -> Message0
+	end,
+
+    %%And the who to to show
+    Message2 = 
+	case Message0#email.header_to of
+	    [] -> Message1#email{header_to=Config#config.header_to};
+	    _ -> Message1
+	end,
+
+    Message = Message2#email{from=Config#config.from},
+
     %% Pull the correct socket from the state and use it
     Socket = dict:fetch(Profile, Sockets),
-    Config = dict:fetch(Profile, Configs),
-    %%Set the who to
-    Recipient = case To of
-                    [] -> Config#config.to;
-                    _ -> To
-                end,
-    %%And the who to to show
-    HeaderRecipient = case HeaderTo of
-                          [] -> Config#config.header_to;
-                          _ -> HeaderTo
-                      end,
+    SmtpConfig = {config, Config#config.host, Config#config.port, Config#config.username, Config#config.password},
 
-    try new_smtp:send(Socket,  {message, Recipient, HeaderRecipient, Config#config.from, Subject, Body}) of
-        Socket ->
-            {noreply, {Sockets, Configs}}
-    catch
-        exit:_ ->
-            S = new_smtp:connect({config, Config#config.host, Config#config.port, Config#config.username, Config#config.password}),
-            handle_cast({mail, Message, Times+1},  {dict:store(Profile, S, Sockets), Configs})
+    case send_email(Socket, SmtpConfig, Message, Times) of
+	{ok, NewSocket} ->
+	    {noreply, {dict:store(Profile, NewSocket, Sockets), Configs}};
+	_ ->
+	    {noreply, State}
     end;
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -198,5 +223,24 @@ terminate(_Reason, {Sockets,_}) ->
 %%--------------------------------------------------------------------
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-
+	
+send_email(_Socket, _SmtpConfig, Message, 0) ->
+    %%Log it, move on
+    error_logger:error_msg("Failed to send message ~p~n", [Message]),
+    failed;
+send_email(Socket, SmtpConfig, Message, Times) ->
+    S = try ssl:connection_info(Socket) of
+	    {ok, _} ->  
+		Socket;
+	    {error, _} ->
+		new_smtp:connect(SmtpConfig)
+	catch
+	    _:_ ->
+		new_smtp:connect(SmtpConfig)
+	end,
+    try new_smtp:send(S,  Message) of
+	S -> {ok, S}
+    catch
+	exit:_ ->
+	    send_email(S, SmtpConfig, Message, Times-1)
+    end.

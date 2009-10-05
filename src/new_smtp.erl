@@ -7,6 +7,8 @@
 %%%-------------------------------------------------------------------
 -module(new_smtp).
 
+-include("config.hrl").
+
 %% API
 -export([connect/1,send/2,disconnect/1, timestamp/0]).
 
@@ -30,16 +32,20 @@ connect({config, Host, Port, Username, Password}) ->
 %% Function: send
 %% Description: sends an email
 %%--------------------------------------------------------------------
-send(Socket, {message, To, Header_to, From, Subject, Message}) ->
+send(Socket, #email{to=To, header_to=Header_to, from=From, content_type=ContentType, subject=Subject, body=Body}) ->
     ssl_send(Socket, "MAIL FROM: <"++From++">"),
     recpt_to(To, Socket),
     ssl_send(Socket, "DATA"),
     send_no_receive(Socket, "From: <"++From++">"),
     header_to(Header_to, Socket),
     send_no_receive(Socket, timestamp()),
+    if ContentType =/= undefined ->
+	    send_no_receive(Socket, "Content-Type: " ++ ContentType);
+       true -> ok
+    end,
     send_no_receive(Socket, "Subject: " ++ Subject),
     send_no_receive(Socket, ""),
-    send_no_receive(Socket, Message),
+    send_no_receive(Socket, Body),
     send_no_receive(Socket, ""),
     ssl_send(Socket, "."),
     Socket.

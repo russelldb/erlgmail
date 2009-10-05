@@ -1,1 +1,2 @@
 -record (config, {host, port, username, password, from, to, header_to}).
+-record (email, {from, content_type="text/plain", subject, body, to, header_to, profile}).
