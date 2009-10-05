@@ -95,21 +95,25 @@ psend(Subject, Body, To, HeaderTo, Profile) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init(L) ->
-    Filename = proplists:get_value(config_file, L),
-    IsAbsolute = proplists:get_value(absolute, L),
-    ConfigFile = case IsAbsolute of
-		     false ->
-			 filename:join(code:priv_dir(?MODULE), Filename);
-		     _ ->
-			 Filename
-		 end,
-    %% Get the dictionary of configname -> config records
-    Config = config_reader:get_config2(ConfigFile),
+    case proplists:get_value(config_file, L) of
+	undefined ->
+	    {stop, missing_config_file};
+	Filename ->
+	    IsAbsolute = proplists:get_value(absolute, L, false),
+	    ConfigFile = case IsAbsolute of
+			     false ->
+				 filename:join(code:priv_dir(?MODULE), Filename);
+			     _ ->
+				 Filename
+			 end,
+	    %% Get the dictionary of configname -> config records
+	    Config = config_reader:get_config2(ConfigFile),
 
-    %% Create a connection socket for each config item and store them in a dictionary configname -> Socket
-    Sockets = dict:map(fun(_Key, Value) -> new_smtp:connect({config, Value#config.host, Value#config.port, Value#config.username, Value#config.password}) end, Config),
-    %%Put both same name keyed dictionaries into a tuple
-    {ok, {Sockets, Config}}.
+	    %% Create a connection socket for each config item and store them in a dictionary configname -> Socket
+	    Sockets = dict:map(fun(_Key, Value) -> new_smtp:connect({config, Value#config.host, Value#config.port, Value#config.username, Value#config.password}) end, Config),
+	    %%Put both same name keyed dictionaries into a tuple
+	    {ok, {Sockets, Config}}
+    end.
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
