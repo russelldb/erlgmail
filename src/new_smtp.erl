@@ -40,8 +40,8 @@ send(Socket, #email{to=To, header_to=Header_to, from=From, content_type=ContentT
     header_to(Header_to, Socket),
     send_no_receive(Socket, timestamp()),
     if ContentType =/= undefined ->
-        send_no_receive(Socket, "Content-Type: " ++ ContentType);
-        true -> ok
+	    send_no_receive(Socket, "Content-Type: " ++ ContentType);
+       true -> ok
     end,
     send_no_receive(Socket, "Subject: " ++ Subject),
     send_no_receive(Socket, ""),
@@ -92,11 +92,11 @@ header_to([H|T], Socket) ->
 
 %% "Date: Tue, 15 Jan 2008 16:02:43 +0000"
 timestamp() ->
-	{Today, {Hour,Min,Sec}} = erlang:localtime(),
-	{Year, Month, DayOfMonth} = Today,
-	DayOfWeek = calendar:day_of_the_week(Today),
-	DayName = httpd_util:day(DayOfWeek),
-	MonthName = httpd_util:month(Month),
+    {Today, {Hour,Min,Sec}} = erlang:localtime(),
+    {Year, Month, DayOfMonth} = Today,
+    DayOfWeek = calendar:day_of_the_week(Today),
+    DayName = httpd_util:day(DayOfWeek),
+    MonthName = httpd_util:month(Month),
     TS = io_lib:format("Date: ~s, ~2.10.0B ~s ~4.10.0B ~2.10.0B:~2.10.0B:~2.10.0B +0000", % Added 3 zeroes as milliseconds, iz a hack but harmless
 		       [ DayName, DayOfMonth,  MonthName, Year, Hour, Min, Sec]),
     lists:flatten(TS).
