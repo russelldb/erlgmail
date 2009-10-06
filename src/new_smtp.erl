@@ -40,8 +40,8 @@ send(Socket, #email{to=To, header_to=Header_to, from=From, content_type=ContentT
     header_to(Header_to, Socket),
     send_no_receive(Socket, timestamp()),
     if ContentType =/= undefined ->
-	    send_no_receive(Socket, "Content-Type: " ++ ContentType);
-       true -> ok
+        send_no_receive(Socket, "Content-Type: " ++ ContentType);
+        true -> ok
     end,
     send_no_receive(Socket, "Subject: " ++ Subject),
     send_no_receive(Socket, ""),

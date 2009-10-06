@@ -89,20 +89,20 @@ send(Subject, Body, To, HeaderTo) ->
     psend(Subject, Body, To, HeaderTo, default).
 
 send_html(Subject, Body, To, HeaderTo) ->
-	psend(Subject, Body, To, HeaderTo, default).
+    psend(Subject, Body, To, HeaderTo, default).
 
 %%--------------------------------------------------------------------
 %% Function: send  
 %% Description: sends the  mail to recipients in To using with display names in HeaderTo using Profile
 %%--------------------------------------------------------------------
 psend(Subject, Body, To, HeaderTo, Profile) ->
-	psend(undefined, Subject, Body, To, HeaderTo, Profile).
+    psend(undefined, Subject, Body, To, HeaderTo, Profile).
 
 psend_html(Subject, Body, To, HeaderTo, Profile) ->
-	psend("text/html", Subject, Body, To, HeaderTo, Profile).
+    psend("text/html", Subject, Body, To, HeaderTo, Profile).
 
 psend(ContentType, Subject, Body, To, HeaderTo, Profile) ->
-	Email = #email{content_type=ContentType, subject=Subject, body=Body, to=To, header_to=HeaderTo},
+    Email = #email{content_type=ContentType, subject=Subject, body=Body, to=To, header_to=HeaderTo},
     gen_server:cast(?SERVER, {Profile, Email, 3}).
 
 
@@ -119,16 +119,16 @@ psend(ContentType, Subject, Body, To, HeaderTo, Profile) ->
 %%--------------------------------------------------------------------
 init(L) ->
     case proplists:get_value(config_file, L) of
-	undefined ->
-	    {stop, missing_config_file};
-	Filename ->
-	    IsAbsolute = proplists:get_value(absolute, L, false),
-	    ConfigFile = case IsAbsolute of
-			     false ->
-				 filename:join(code:priv_dir(?MODULE), Filename);
-			     _ ->
-				 Filename
-			 end,
+	    undefined ->
+	        {stop, missing_config_file};
+	    Filename ->
+	        IsAbsolute = proplists:get_value(absolute, L, false),
+	        ConfigFile = case IsAbsolute of
+		        false ->
+			        filename:join(code:priv_dir(?MODULE), Filename);
+			    _ ->
+			        Filename
+			    end,
 	    %% Get the dictionary of configname -> config records
 	    Config = config_reader:get_config2(ConfigFile),
 
@@ -169,8 +169,8 @@ handle_cast({Profile, Message0, Times}, {Sockets, Configs}=State) ->
     %%And the who to to show
     Message2 = 
 	case Message0#email.header_to of
-	    [] -> Message1#email{header_to=Config#config.header_to};
-	    _ -> Message1
+        [] -> Message1#email{header_to=Config#config.header_to};
+        _ -> Message1
 	end,
 
     Message = Message2#email{from=Config#config.from},
@@ -231,16 +231,16 @@ send_email(_Socket, _SmtpConfig, Message, 0) ->
 send_email(Socket, SmtpConfig, Message, Times) ->
     S = try ssl:connection_info(Socket) of
 	    {ok, _} ->  
-		Socket;
+		    Socket;
 	    {error, _} ->
-		new_smtp:connect(SmtpConfig)
+		    new_smtp:connect(SmtpConfig)
 	catch
 	    _:_ ->
-		new_smtp:connect(SmtpConfig)
+		    new_smtp:connect(SmtpConfig)
 	end,
     try new_smtp:send(S,  Message) of
-	S -> {ok, S}
+	    S -> {ok, S}
     catch
-	exit:_ ->
-	    send_email(S, SmtpConfig, Message, Times-1)
+	    exit:_ ->
+	        send_email(S, SmtpConfig, Message, Times-1)
     end.
