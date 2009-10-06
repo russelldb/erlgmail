@@ -1,5 +1,8 @@
 Erlgmail is a knocked together OTP app that simplyfies sending email through googlemail. It is just a wrapper on the work by Benjamin Nortier in this (http://21ccw.blogspot.com/2009/05/how-to-send-email-via-gmail-using.html) blog post.
 
+
+And it now supports sending HTML email thanks to davide.
+
 To use:
 
 The cfg file now allows "profiles". Also the app now follows OTP env config standards better. If you wish to start an erlgmail OTP application instance with a different config file simply start like:
@@ -23,4 +26,6 @@ or erl -boot start_sasl -config /path/to/SASL_CONF -erlgmail '"/abs/path/to/conf
 1> ssl:start().
 2> application:start(erlgmail).
 3> erlgmail:send("Subject", "Message Body", ["to@who.com"], ["Mister To Who"]).
-4> erlgmail:send("Subject", "Message", myprofile_x).
+4> erlgmail:psend("Subject", "Message", myprofile_x).
+5> erlgmail:send_html("Subject", "<h1>Big Hello!</h1><img src='trackyou.image'/><br/><strong>An HTML email</strong>").
+
