@@ -242,5 +242,5 @@ send_email(Socket, SmtpConfig, Message, Times) ->
 	S -> {ok, S}
     catch
 	exit:_ ->
-	    send_email(S, SmtpConfig, Message, Times-1)
+	    send_email(new_smtp:connect(SmtpConfig), SmtpConfig, Message, Times-1)
     end.
