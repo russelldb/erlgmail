@@ -20,7 +20,7 @@
 %% Description: connects to googlemail and logs the user in
 %%--------------------------------------------------------------------
 connect({config, Host, Port, Username, Password}) ->
-    {ok, Socket} = ssl:connect(Host, Port, [{active, false}], 1000),
+    {ok, Socket} = ssl:connect(Host, Port, [{active, false}, {ssl_imp, old}], 1000),
     recv(Socket, 0),
     ssl_send(Socket, "HELO localhost"),
     ssl_send(Socket, "AUTH LOGIN"),
@@ -73,7 +73,8 @@ recv(Socket, 3) ->
     exit(timeout);
 recv(Socket, Times) ->
     case ssl:recv(Socket, 0, 2000) of
-        {ok, _} -> ok;
+        {ok, "535-5.7.1" ++ _Str} -> exit(user_name_password_failure);
+        {ok, Data} -> error_logger:info_msg("~p~n", [Data]), ok;
         {error, closed} -> exit(socket_closed);
 	{error, timeout} -> recv(Socket, Times+1)
     end.
